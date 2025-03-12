@@ -1,4 +1,4 @@
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 import pandas as pd
 import pickle
 import os
@@ -24,21 +24,26 @@ print(f"Loaded {len(train_texts)} train, {len(dev_texts)} dev, {len(test_texts)}
 print(f"Total sentences: {len(all_sentences)}")
 
 # Load the Sentence-Transformer model
-model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v1')
+model = SentenceTransformer("all-mpnet-base-v2")
 
 # Compute embeddings
-print(" Generating embeddings...")
-embeddings = model.encode(all_sentences, convert_to_tensor=True)
-embeddings = model.encode(all_sentences, convert_to_tensor=False)
-print(" Embeddings generated!")
+print("Generating embeddings...")
+embeddings = model.encode(all_sentences)
+print("Embeddings generated!")
+print(f"Debug: Embeddings shape before saving: {embeddings.shape}")  # Should be (N, 512)
 
-# Save embeddings to `cos_sim.pkl`
+# Compute cosine similarity matrix
+print("Computing cosine similarity matrix...")
+similarities = model.similarity(embeddings, embeddings)
+
+print(f"Cosine similarity matrix shape: {similarities.shape}")  # Should be (N, N)
+
+# Save the cosine similarity matrix to `cos_sim.pkl`
 save_dir = "/mnt/c/Research/GASLT/data/pht/sim"
 os.makedirs(save_dir, exist_ok=True)  # Ensure directory exists
 save_path = os.path.join(save_dir, "cos_sim.pkl")  # Define full save path
 
-
 with open(save_path, 'wb') as file:
-    pickle.dump(embeddings, file)
+    pickle.dump(similarities, file)
 
-print(f"Saved embeddings to: {save_path}")
+print(f"Saved cosine similarity matrix to: {save_path}")

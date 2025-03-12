@@ -92,7 +92,7 @@ def load_all_data(train_corpus, dev_corpus, test_corpus, pt_files_path):
 
             else:
                 sign_tensor = torch.empty(0)  # Default to empty tensor
-
+    
             # Store full dictionary (not just the name!)
             entry = {
                 "name": row["name"],
