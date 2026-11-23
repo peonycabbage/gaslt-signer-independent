@@ -1,6 +1,6 @@
 # Signer-independent preprocessing for GASLT
 
-This repository contains [Keren Artiaga’s preprocessing scripts](NEW_preprocessing) for signer-independent GASLT experiments on RWTH-PHOENIX-Weather 2014 T (PHOENIX14T). The associated [EMNLP 2025 Findings paper](https://aclanthology.org/2025.findings-emnlp.997/) evaluated three gloss-free sign language translation models, GFSLT-VLP, GASLT, and SignCL, on PHOENIX14T and CSL-Daily. The scripts here cover the PHOENIX14T preprocessing workflow for GASLT.
+This repository contains [signer-independent preprocessing scripts](NEW_preprocessing) for GASLT experiments on RWTH-PHOENIX-Weather 2014 T (PHOENIX14T). The associated [EMNLP 2025 Findings paper](https://aclanthology.org/2025.findings-emnlp.997/) evaluated three gloss-free sign language translation models, GFSLT-VLP, GASLT, and SignCL, on PHOENIX14T and CSL-Daily. The scripts here cover the PHOENIX14T preprocessing workflow for GASLT.
 
 The workflow pools the official PHOENIX14T annotations and repartitions the clips into nine folds. Each fold holds out one signer for development and a different signer for testing. The other seven signers are used for training. Each signer serves as the test signer once.
 
