@@ -1,8 +1,8 @@
-# Signer-independent evaluation with GASLT
+# Signer-independent preprocessing for GASLT
 
-This repository adapts [GASLT](https://github.com/YinAoXiong/GASLT) for signer-independent experiments on RWTH-PHOENIX-Weather 2014 T (PHOENIX14T). **Keren Artiaga’s contribution is the [signer-independent preprocessing workflow](NEW_preprocessing).** GASLT’s model architecture and original implementation are by Aoxiong Yin and colleagues (CVPR 2023).
+This repository contains [Keren Artiaga’s preprocessing scripts](NEW_preprocessing) for signer-independent GASLT experiments on RWTH-PHOENIX-Weather 2014 T (PHOENIX14T). The associated [EMNLP 2025 Findings paper](https://aclanthology.org/2025.findings-emnlp.997/) evaluated three gloss-free sign language translation models, GFSLT-VLP, GASLT, and SignCL, on PHOENIX14T and CSL-Daily. The scripts here cover the PHOENIX14T preprocessing workflow for GASLT.
 
-The workflow pools the official PHOENIX14T annotations and repartitions clips into nine folds. Each fold holds out one signer for development and a different signer for testing. Training uses the other seven signers. Each signer serves as the test signer once.
+The workflow pools the official PHOENIX14T annotations and repartitions the clips into nine folds. Each fold holds out one signer for development and a different signer for testing. The other seven signers are used for training. Each signer serves as the test signer once.
 
 | Script | Output |
 | --- | --- |
@@ -37,24 +37,42 @@ python NEW_preprocessing/cos_sim.py --annotations-dir "$ANNOTATIONS" --fold "$FO
 
 The last command downloads the `all-mpnet-base-v2` sentence encoder on first use. It builds pairwise translation similarities in the same order as the fold’s video IDs. The packed splits are written to `data/pht/data/signer_folds/fold_1/` and the ID mapping and similarity matrix to `data/pht/sim/`.
 
-## Train and evaluate
+## Use the outputs with GASLT
 
-The [included config](configs/train_pht.yaml) targets fold 1. Place the GASLT German SentencePiece model (`de.wiki.bpe.vs25000.model`) and word vectors (`de.wiki.bpe.vs25000.d300.w2v.txt`) under `data/pht/bpe/`. See the [upstream GASLT data instructions](https://github.com/YinAoXiong/GASLT#datasets) for the original assets.
+Aoxiong Yin and colleagues developed the [original GASLT model and implementation](https://github.com/YinAoXiong/GASLT). Clone that repository separately and follow its setup instructions for training, evaluation, and the required BPE assets. Copy the generated `data/pht/` outputs into the GASLT checkout, preserving their directory structure. In a copy of GASLT’s `configs/train_pht.yaml`, set these values for fold 1.
 
-Training uses the original Linux CUDA environment in [`env.yaml`](env.yaml).
+| Config key | Value |
+| --- | --- |
+| `data.data_path` | `./data/pht/data/signer_folds/fold_1/` |
+| `data.test` | `phoenix14t.pami0.test` |
+| `model.sim_name_to_video_id_json` | `./data/pht/sim/fold_1.json` |
+| `model.sim_video_cos_sim` | `./data/pht/sim/fold_1_cos_sim.pkl` |
+| `training.model_dir` | `./results/pht/fold_1` |
 
-```bash
-conda env create -f env.yaml
-conda activate gaslt
-python -m signjoey train configs/train_pht.yaml --gpu_id 0
-python -m signjoey test configs/train_pht.yaml --ckpt /path/to/checkpoint --gpu_id 0
+For folds 2–9, repeat preprocessing with the desired fold number and update the paths accordingly. The [`gaslt-implementation` branch](https://github.com/peonycabbage/myGASLT_github/tree/gaslt-implementation) preserves the previous checkout, including its local compatibility changes and fold configuration.
+
+## Cite the evaluation study
+
+If you use this preprocessing workflow, cite the study by Artiaga et al.
+
+```bibtex
+@inproceedings{artiaga-etal-2025-rethinking,
+    title = {Rethinking Sign Language Translation: The Impact of Signer Dependence on Model Evaluation},
+    author = {Artiaga, Keren and Kamila, Sabyasachi and Afli, Haithem and Lynch, Conor and Hasanuzzaman, Mohammed},
+    booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2025},
+    month = nov,
+    year = {2025},
+    address = {Suzhou, China},
+    publisher = {Association for Computational Linguistics},
+    pages = {18379--18391},
+    doi = {10.18653/v1/2025.findings-emnlp.997},
+    url = {https://aclanthology.org/2025.findings-emnlp.997/}
+}
 ```
 
-For folds 2–9, repeat preprocessing with the desired fold number. Copy the training YAML and update `data.data_path`, `model.sim_name_to_video_id_json`, `model.sim_video_cos_sim`, and `training.model_dir` to use that fold. Use the same fold config for training and testing.
+## Cite the GASLT model
 
-## Citation and credits
-
-Please cite the original GASLT paper when using the model. If you use the signer-independent preprocessing, please also credit Keren Artiaga and link to this repository.
+If you use GASLT, also cite the original paper by Yin et al.
 
 ```bibtex
 @inproceedings{yin2023gloss,
@@ -65,5 +83,3 @@ Please cite the original GASLT paper when using the model. If you use the signer
   year={2023}
 }
 ```
-
-The upstream implementation builds on [SLT](https://github.com/neccam/slt), [WLASL](https://github.com/dxli94/WLASL), [SP-10](https://github.com/MLSLT/SP-10), [TSPNet](https://github.com/verashira/TSPNet), and [BPEmb](https://github.com/bheinzerling/bpemb).

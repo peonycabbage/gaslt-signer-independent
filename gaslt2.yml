@@ -1,4 +1,0 @@
-name: gaslt2
-channels:
-  - defaults
-prefix: /home/keren/miniconda3/envs/gaslt2
