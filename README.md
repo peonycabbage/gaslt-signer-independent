@@ -15,8 +15,8 @@ The workflow pools the official PHOENIX14T annotations and repartitions the clip
 Clone this repository and run the commands from its root.
 
 ```bash
-git clone https://github.com/peonycabbage/myGASLT_github.git
-cd myGASLT_github
+git clone https://github.com/peonycabbage/gaslt-signer-independent.git
+cd gaslt-signer-independent
 ```
 
 Download the [PHOENIX14T annotations](https://www-i6.informatik.rwth-aachen.de/~koller/RWTH-PHOENIX-2014-T/) and obtain the [TSPNet visual features](https://github.com/verashira/TSPNet) with window 8 and stride 2. The packer expects a flat feature directory containing one `<video_name>.pt` per annotation, with 1,024 values per timestep. Set the paths below to your local copies. The annotations directory is typically `annotations/manual` and contains the three official `PHOENIX-2014-T.<split>.corpus.csv` files.
@@ -49,7 +49,7 @@ Aoxiong Yin and colleagues developed the [original GASLT model and implementatio
 | `model.sim_video_cos_sim` | `./data/pht/sim/fold_1_cos_sim.pkl` |
 | `training.model_dir` | `./results/pht/fold_1` |
 
-For folds 2–9, repeat preprocessing with the desired fold number and update the paths accordingly. The [`gaslt-implementation` branch](https://github.com/peonycabbage/myGASLT_github/tree/gaslt-implementation) preserves the previous checkout, including its local compatibility changes and fold configuration.
+For folds 2–9, repeat preprocessing with the desired fold number and update the paths accordingly. The [`gaslt-implementation` branch](https://github.com/peonycabbage/gaslt-signer-independent/tree/gaslt-implementation) preserves the previous checkout, including its local compatibility changes and fold configuration.
 
 ## Cite the evaluation study
 
