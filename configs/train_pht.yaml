@@ -7,7 +7,7 @@ data:
     gls: gloss
     train: phoenix14t.pami0.train
     dev: phoenix14t.pami0.dev
-    test: phoenix14t.pami0.dev
+    test: phoenix14t.pami0.test
     feature_size: 1024
     level: bpe
     sp_model_path: ./data/pht/bpe/de.wiki.bpe.vs25000.model
@@ -51,7 +51,7 @@ training:
     reset_scheduler: false
     reset_optimizer: false
     random_seed: 42
-    model_dir: "./results/pht"
+    model_dir: "./results/pht/fold_1"
     recognition_loss_weight: 0.0
     translation_loss_weight: 1.0
     eval_metric: bleu
@@ -92,8 +92,8 @@ model:
     embed_init_gain: 1.0
     tied_softmax: false
     word_vectors: ./data/pht/bpe/de.wiki.bpe.vs25000.d300.w2v.txt
-    sim_name_to_video_id_json: ./data/pht/sim/name_to_video_id.json
-    sim_video_cos_sim: ./data/pht/sim/cos_sim.pkl
+    sim_name_to_video_id_json: ./data/pht/sim/fold_1.json
+    sim_video_cos_sim: ./data/pht/sim/fold_1_cos_sim.pkl
     max_query_embedding: 100
     sim_loss_weight: 10
     sentence_embedding_mod: mean

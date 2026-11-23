@@ -1,76 +1,60 @@
-# Gloss Attention for Gloss-free Sign Language Translation
+# Signer-independent evaluation with GASLT
 
-This is the official implementation of the GASLT paper.
+This repository adapts [GASLT](https://github.com/YinAoXiong/GASLT) for signer-independent experiments on RWTH-PHOENIX-Weather 2014 T (PHOENIX14T). **Keren Artiaga’s contribution is the [signer-independent preprocessing workflow](NEW_preprocessing).** GASLT’s model architecture and original implementation are by Aoxiong Yin and colleagues (CVPR 2023).
 
-## Environment
+The workflow pools the official PHOENIX14T annotations and repartitions clips into nine folds. Each fold holds out one signer for development and a different signer for testing. Training uses the other seven signers. Each signer serves as the test signer once.
 
-```shell
-git clone https://github.com/YinAoXiong/GASLT
-cd GASLT
+| Script | Output |
+| --- | --- |
+| [`pack_dataset.py`](NEW_preprocessing/pack_dataset.py) | GASLT-format train, dev, and test files for the selected fold |
+| [`name_to_video.py`](NEW_preprocessing/name_to_video.py) | A zero-based video ID mapping for the fold |
+| [`cos_sim.py`](NEW_preprocessing/cos_sim.py) | A cosine similarity matrix indexed by that mapping |
+
+## Prepare a fold
+
+Clone this repository and run the commands from its root.
+
+```bash
+git clone https://github.com/peonycabbage/myGASLT_github.git
+cd myGASLT_github
+```
+
+Download the [PHOENIX14T annotations](https://www-i6.informatik.rwth-aachen.de/~koller/RWTH-PHOENIX-2014-T/) and obtain the [TSPNet visual features](https://github.com/verashira/TSPNet) with window 8 and stride 2. The packer expects a flat feature directory containing one `<video_name>.pt` per annotation, with 1,024 values per timestep. Set the paths below to your local copies. The annotations directory is typically `annotations/manual` and contains the three official `PHOENIX-2014-T.<split>.corpus.csv` files.
+
+Use a separate Python 3.10 or 3.11 environment for preprocessing. NumPy 1.x keeps the similarity pickle readable by the legacy training environment.
+
+```bash
+conda create -n gaslt-preprocess python=3.11 pip
+conda activate gaslt-preprocess
+python -m pip install "numpy<2" pandas torch sentence-transformers
+ANNOTATIONS=/path/to/PHOENIX-2014-T/annotations/manual
+FEATURES=/path/to/span=8_stride=2
+FOLD=1
+python NEW_preprocessing/pack_dataset.py --annotations-dir "$ANNOTATIONS" --features-dir "$FEATURES" --fold "$FOLD"
+python NEW_preprocessing/name_to_video.py --annotations-dir "$ANNOTATIONS" --fold "$FOLD"
+python NEW_preprocessing/cos_sim.py --annotations-dir "$ANNOTATIONS" --fold "$FOLD"
+```
+
+The last command downloads the `all-mpnet-base-v2` sentence encoder on first use. It builds pairwise translation similarities in the same order as the fold’s video IDs. The packed splits are written to `data/pht/data/signer_folds/fold_1/` and the ID mapping and similarity matrix to `data/pht/sim/`.
+
+## Train and evaluate
+
+The [included config](configs/train_pht.yaml) targets fold 1. Place the GASLT German SentencePiece model (`de.wiki.bpe.vs25000.model`) and word vectors (`de.wiki.bpe.vs25000.d300.w2v.txt`) under `data/pht/bpe/`. See the [upstream GASLT data instructions](https://github.com/YinAoXiong/GASLT#datasets) for the original assets.
+
+Training uses the original Linux CUDA environment in [`env.yaml`](env.yaml).
+
+```bash
 conda env create -f env.yaml
 conda activate gaslt
-```
-
-## Datasets
-
-For the RWTH-PHOENIX-Weather 2014 T dataset, we provide processed data for download. 
-
-* [onedrive download link](https://zjueducn-my.sharepoint.com/:u:/g/personal/yinaoxiong_zju_edu_cn/EYiItnOUUxhCnrIRduhYh3oBsGYlEUO_-heZAFzr4amzQw?e=JyHmRE)
-
-Since the public link will expire after a period of time, if the link expires, please contact me via email yinaoxiong@zju.edu.cn to get a new access link.
-
-For other datasets, please refer to the following steps for processing because we do not have permission to distribute them.
-
-### Step 1: Download the raw data:
-* [RWTH-PHOENIX-Weather 2014 T](https://www-i6.informatik.rwth-aachen.de/~koller/RWTH-PHOENIX-2014-T/)
-* [CSL-Daily](https://ustc-slr.github.io/datasets/2021_csl_daily/)
-* [SP-10](https://github.com/MLSLT/SP-10)
-
-### Step 2: Extract visual features:
-* For the RWTH-PHOENIX-Weather 2014 T dataset, directly download the visual features extracted from the [TSPNet](https://github.com/verashira/TSPNet) project, and select the version with a window of 8 and a stride of 2.
-* For the CSL-Daily and SP-10 datasets, download the pre-trained I3D model weights and feature extraction code from the [WLASL](https://github.com/dxli94/WLASL) project, and extract features in a sliding window with a window of 8 and a stride of 2.
-
-### Step 3: Pack the dataset:
-
-Follow the format of the slt project to package the visual features. Specifically, the python list object is first serialized using pickle and then gzip compressed.
-
-### Step 4: Calculate Similarity Labels
-
-We use the distiluse-base-multilingual-cased-v1 model from the [Sentence-Transformers](https://www.sbert.net/docs/pretrained_models.html) project to calculate the similarity between texts.
-
-## Training and Testing
-First, make sure that the structure under the project data folder is as follows, 
-```shell
-data
-└── pht
-    ├── bpe
-    │   ├── de.wiki.bpe.vs25000.d300.w2v.txt
-    │   ├── de.wiki.bpe.vs25000.d300.w2v.txt.pt
-    │   └── de.wiki.bpe.vs25000.model
-    ├── data
-    │   ├── phoenix14t.pami0.dev
-    │   ├── phoenix14t.pami0.test
-    │   └── phoenix14t.pami0.train
-    └── sim
-        ├── cos_sim.pkl
-        └── name_to_video_id.json
-    ... 
-```
-
-and then run the command to train the model.
-
-```shell
 python -m signjoey train configs/train_pht.yaml --gpu_id 0
-```
-Run the following command to test the model.
-```shell
-python -m signjoey test configs/test_pht.yaml  --ckpt <path_to_ckpt> --output_path <path_to_output> --gpu_id 0
+python -m signjoey test configs/train_pht.yaml --ckpt /path/to/checkpoint --gpu_id 0
 ```
 
+For folds 2–9, repeat preprocessing with the desired fold number. Copy the training YAML and update `data.data_path`, `model.sim_name_to_video_id_json`, `model.sim_video_cos_sim`, and `training.model_dir` to use that fold. Use the same fold config for training and testing.
 
-## Citation
+## Citation and credits
 
-If you find this project useful, please cite our paper:
+Please cite the original GASLT paper when using the model. If you use the signer-independent preprocessing, please also credit Keren Artiaga and link to this repository.
 
 ```bibtex
 @inproceedings{yin2023gloss,
@@ -82,10 +66,4 @@ If you find this project useful, please cite our paper:
 }
 ```
 
-## Acknowledgements
-Our codes are based on the following repos:
-* [slt](https://github.com/neccam/slt)
-* [WLASL](https://github.com/dxli94/WLASL)
-* [SP-10](https://github.com/MLSLT/SP-10)
-* [TSPNet](https://github.com/verashira/TSPNet)
-* [bpemb](https://github.com/bheinzerling/bpemb)
+The upstream implementation builds on [SLT](https://github.com/neccam/slt), [WLASL](https://github.com/dxli94/WLASL), [SP-10](https://github.com/MLSLT/SP-10), [TSPNet](https://github.com/verashira/TSPNet), and [BPEmb](https://github.com/bheinzerling/bpemb).

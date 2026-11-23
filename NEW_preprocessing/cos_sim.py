@@ -1,49 +1,35 @@
-from sentence_transformers import SentenceTransformer
-import pandas as pd
+import argparse
+import json
 import pickle
-import os
+from pathlib import Path
 
-# Paths to CSV corpus files
-train_corpus = "/mnt/c/Research/Dataset/phoenix-2014_o/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual/PHOENIX-2014-T.train.corpus.csv"
-dev_corpus = "/mnt/c/Research/Dataset/phoenix-2014_o/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual/PHOENIX-2014-T.dev.corpus.csv"
-test_corpus = "/mnt/c/Research/Dataset/phoenix-2014_o/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual/PHOENIX-2014-T.test.corpus.csv"
+from sentence_transformers import SentenceTransformer
 
-# Load all datasets
-def load_translations(corpus_path):
-    df = pd.read_csv(corpus_path, delimiter="|", dtype=str)
-    return df["translation"].dropna().tolist()  # Remove NaN values
+from name_to_video import load_corpus, signer_folds
 
-train_texts = load_translations(train_corpus)
-dev_texts = load_translations(dev_corpus)
-test_texts = load_translations(test_corpus)
 
-# Combine all sentences
-all_sentences = train_texts + dev_texts + test_texts
+def main():
+    parser = argparse.ArgumentParser(description="Compute GASLT similarity labels for one fold")
+    parser.add_argument("--annotations-dir", type=Path, required=True)
+    parser.add_argument("--fold", type=int, choices=signer_folds, required=True)
+    parser.add_argument("--output-dir", type=Path, default=Path("data/pht/sim"))
+    args = parser.parse_args()
 
-print(f"Loaded {len(train_texts)} train, {len(dev_texts)} dev, {len(test_texts)} test sentences.")
-print(f"Total sentences: {len(all_sentences)}")
+    mapping_path = args.output_dir / f"fold_{args.fold}.json"
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    translations = load_corpus(args.annotations_dir).set_index("name")["translation"]
+    if set(mapping) != set(translations.index) or sorted(mapping.values()) != list(range(len(mapping))):
+        raise ValueError("Regenerate the zero-based fold mapping with name_to_video.py")
+    names = sorted(mapping, key=mapping.get)
+    model = SentenceTransformer("all-mpnet-base-v2")
+    embeddings = model.encode(translations.loc[names].tolist(), normalize_embeddings=True)
+    similarities = (embeddings @ embeddings.T).astype("float64")
 
-# Load the Sentence-Transformer model
-model = SentenceTransformer("all-mpnet-base-v2")
+    path = args.output_dir / f"fold_{args.fold}_cos_sim.pkl"
+    with path.open("wb") as stream:
+        pickle.dump(similarities, stream, protocol=4)
+    print(f"{path}: {similarities.shape}")
 
-# Compute embeddings
-print("Generating embeddings...")
-embeddings = model.encode(all_sentences)
-print("Embeddings generated!")
-print(f"Debug: Embeddings shape before saving: {embeddings.shape}")  # Should be (N, 512)
 
-# Compute cosine similarity matrix
-print("Computing cosine similarity matrix...")
-similarities = model.similarity(embeddings, embeddings)
-
-print(f"Cosine similarity matrix shape: {similarities.shape}")  # Should be (N, N)
-
-# Save the cosine similarity matrix to `cos_sim.pkl`
-save_dir = "/mnt/c/Research/GASLT/data/pht/sim"
-os.makedirs(save_dir, exist_ok=True)  # Ensure directory exists
-save_path = os.path.join(save_dir, "cos_sim.pkl")  # Define full save path
-
-with open(save_path, 'wb') as file:
-    pickle.dump(similarities, file)
-
-print(f"Saved cosine similarity matrix to: {save_path}")
+if __name__ == "__main__":
+    main()
